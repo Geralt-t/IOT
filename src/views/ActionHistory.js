@@ -1,35 +1,18 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useTable, usePagination, useSortBy } from "react-table";
-import {
-  Card,
-  Container,
-  Row,
-  Col,
-  Table as BootstrapTable,
-  FormControl,
-  Form,
-} from "react-bootstrap";
+import axios from 'axios';
+import { Card, Container, Row, Col, Table as BootstrapTable, FormControl, Form, Button } from "react-bootstrap";
 
 function ActionHistory() {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [data1, setData1] = useState([]); // Khởi tạo state để chứa dữ liệu
+  const [data1, setData1] = useState([]);
   const [filterColumn, setFilterColumn] = useState("all");
   const [filterValue, setFilterValue] = useState("");
+  const [pageIndex, setPageIndex] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [inputPage, setInputPage] = useState(1);
 
-  // Hàm để định dạng ngày tháng năm giờ phút giây
-  const formatDate = (dateString) => {
-    const options = {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZone: "UTC",
-    };
-    return new Intl.DateTimeFormat("sv-SE", options).format(new Date(dateString));
-  };
+  const [sortColumn, setSortColumn] = useState("thoi_gian"); // Cột sắp xếp mặc định
+  const [sortOrder, setSortOrder] = useState("DESC"); // Thứ tự sắp xếp mặc định
 
   const columns1 = useMemo(
     () => [
@@ -45,71 +28,52 @@ function ActionHistory() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/device-status");
-        const result = await response.json();
-        setData1(result.reverse()); // Đảo ngược mảng dữ liệu để hiển thị dữ liệu mới nhất lên đầu
+        const url = `http://localhost:5000/api/device-status?page=${pageIndex}&limit=${pageSize}&filterColumn=${filterColumn}&filterValue=${filterValue}&sortColumn=${sortColumn}&sortOrder=${sortOrder}`;
+        const response = await axios.get(url);
+        
+        const formattedData = response.data.data.map((item) => ({
+          id: item.id,
+          thiet_bi: item.thiet_bi,
+          trang_thai: item.trang_thai,
+          thoi_gian: item.thoi_gian,
+        }));
+        
+        setData1(formattedData);
+        setTotalPages(response.data.totalPages);
       } catch (error) {
-        console.error("Lỗi khi lấy dữ liệu:", error);
+        console.error("Lỗi khi fetch dữ liệu:", error);
       }
     };
-    fetchData();
-  }, []);
 
-  // Lọc dữ liệu dựa trên cột được chọn và giá trị nhập vào
-  const filteredData = useMemo(() => {
-    if (!filterValue && !startDate && !endDate) return data1;
-    
-    return data1.filter((row) => {
-      // Nếu có startDate và endDate, kiểm tra khoảng thời gian
-      if (startDate && endDate) {
-        const rowTime = new Date(row.thoi_gian);
-        const startTime = new Date(startDate);
-        const endTime = new Date(endDate);
-        if (rowTime < startTime || rowTime > endTime) return false;
-      }
-      
-      // Lọc theo cột hoặc toàn bộ khi có giá trị filterValue
-      if (filterValue) {
-        if (filterColumn === "all") {
-          return Object.keys(row).some((key) =>
-            String(row[key]).toLowerCase().includes(filterValue.toLowerCase())
-          );
-        } else if (filterColumn === "thoi_gian") {
-          const dateFormatted = formatDate(row.thoi_gian).toLowerCase();
-          return dateFormatted.includes(filterValue.toLowerCase());
-        } else {
-          const cellValue = String(row[filterColumn]).toLowerCase();
-          return cellValue.includes(filterValue.toLowerCase());
-        }
-      }
-      
-      return true;
-    });
-  }, [filterValue, filterColumn, data1, startDate, endDate]);
-  
-  const {
-    getTableProps: getTableProps1,
-    getTableBodyProps: getTableBodyProps1,
-    headerGroups: headerGroups1,
-    prepareRow: prepareRow1,
-    page: page1,
-    canPreviousPage: canPreviousPage1,
-    canNextPage: canNextPage1,
-    pageOptions: pageOptions1,
-    gotoPage: gotoPage1,
-    nextPage: nextPage1,
-    previousPage: previousPage1,
-    setPageSize: setPageSize1,
-    state: { pageIndex: pageIndex1, pageSize: pageSize1 },
-  } = useTable(
-    {
-      columns: columns1,
-      data: filteredData,
-      initialState: { pageIndex: 0 },
-    },
-    useSortBy,
-    usePagination
-  );
+    fetchData();
+  }, [filterColumn, filterValue, pageIndex, pageSize, sortColumn, sortOrder]);
+
+  const handleFilterValueChange = (e) => {
+    const sanitizedValue = e.target.value.replace(/^\s+|\t/g, "");
+    setFilterValue(sanitizedValue);
+    setPageIndex(1); // Reset về trang đầu khi thay đổi bộ lọc
+  };
+
+  const handlePageChange = () => {
+    if (inputPage > 0 && inputPage <= totalPages) {
+      setPageIndex(inputPage);
+    }
+  };
+
+  const handlePageSizeChange = (e) => {
+    setPageSize(Number(e.target.value));
+    setPageIndex(1); // Reset về trang đầu khi thay đổi pageSize
+  };
+
+  // Xử lý sự kiện khi người dùng bấm vào tiêu đề cột
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortOrder(sortOrder === "ASC" ? "DESC" : "ASC"); // Đảo chiều sắp xếp nếu cột đã được chọn
+    } else {
+      setSortColumn(column);
+      setSortOrder("ASC"); // Nếu chọn cột mới, mặc định sắp xếp tăng dần
+    }
+  };
 
   return (
     <Container fluid>
@@ -123,7 +87,7 @@ function ActionHistory() {
               {/* Thanh tìm kiếm kết hợp */}
               <FormControl
                 value={filterValue}
-                onChange={(e) => setFilterValue(e.target.value)}
+                onChange={handleFilterValueChange}
                 placeholder="Tìm kiếm..."
                 className="mb-3"
                 style={{ width: "300px", display: "inline-block" }}
@@ -139,95 +103,109 @@ function ActionHistory() {
                 <option value="trang_thai">Trạng thái</option>
                 <option value="thoi_gian">Thời gian</option>
               </Form.Control>
-              
-              {/* Chỉ hiển thị các trường datetime khi chọn "Thời gian" */}
-              {filterColumn === "thoi_gian" && (
-                <>
-                  <FormControl
-                    type="datetime-local"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="mb-3"
-                    style={{ width: "200px", display: "inline-block", marginRight: "10px" }}
-                  />
-                  <FormControl
-                    type="datetime-local"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="mb-3"
-                    style={{ width: "200px", display: "inline-block" }}
-                  />
-                </>
-              )}
 
-              <BootstrapTable {...getTableProps1()} className="table-hover table-striped mt-3">
+              <BootstrapTable className="table-hover table-striped mt-3">
                 <thead>
-                  {headerGroups1.map((headerGroup) => (
-                    <tr {...headerGroup.getHeaderGroupProps()}>
-                      {headerGroup.headers.map((column) => (
-                        <th {...column.getHeaderProps(column.getSortByToggleProps())}>
-                          {column.render("Header")}
-                          <span>
-                            {column.isSorted
-                              ? column.isSortedDesc
-                                ? " 🔽"
-                                : " 🔼"
-                              : ""}
-                          </span>
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
+                  <tr>
+                    {columns1.map((column) => (
+                      <th
+                        key={column.accessor}
+                        onClick={() => handleSort(column.accessor)} // Bấm vào tiêu đề cột để sắp xếp
+                        style={{ cursor: "pointer" }}
+                      >
+                        {column.Header}
+                        {sortColumn === column.accessor && (sortOrder === "ASC" ? " 🔼" : " 🔽")}
+                      </th>
+                    ))}
+                  </tr>
                 </thead>
-                <tbody {...getTableBodyProps1()}>
-                  {page1.map((row) => {
-                    prepareRow1(row);
-                    return (
-                      <tr {...row.getRowProps()}>
-                        {row.cells.map((cell) => (
-                          <td {...cell.getCellProps()}>
-                            {cell.column.id === "thoi_gian"
-                              ? formatDate(cell.value)
-                              : cell.render("Cell")}
-                          </td>
-                        ))}
+                <tbody>
+                  {data1.length > 0 ? (
+                    data1.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.id}</td>
+                        <td>{item.thiet_bi}</td>
+                        <td>{item.trang_thai}</td>
+                        <td>{item.thoi_gian}</td>
                       </tr>
-                    );
-                  })}
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={columns1.length} style={{ textAlign: "center" }}>
+                        Không có dữ liệu
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </BootstrapTable>
 
               {/* Phân trang */}
               <div className="pagination">
-                <button onClick={() => gotoPage1(0)} disabled={!canPreviousPage1}>
-                  {"<<"}
-                </button>
-                <button onClick={() => previousPage1()} disabled={!canPreviousPage1}>
+                <button onClick={() => setPageIndex((prev) => Math.max(prev - 1, 1))} disabled={pageIndex === 1}>
                   {"<"}
                 </button>
-                <button onClick={() => nextPage1()} disabled={!canNextPage1}>
+
+                {Array.from({ length: Math.min(10, totalPages) }, (_, i) => {
+                  const pageNum = pageIndex - 5 + i;
+                  if (pageNum >= 1 && pageNum <= totalPages) {
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPageIndex(pageNum)}
+                        className={pageIndex === pageNum ? "active" : ""}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  }
+                  return null;
+                })}
+
+                {totalPages > 10 && (
+                  <>
+                    <span>...</span>
+                    <button onClick={() => setPageIndex(totalPages)}>{totalPages}</button>
+                  </>
+                )}
+
+                <button onClick={() => setPageIndex((prev) => Math.min(prev + 1, totalPages))} disabled={pageIndex === totalPages}>
                   {">"}
                 </button>
-                <button onClick={() => gotoPage1(pageOptions1.length - 1)} disabled={!canNextPage1}>
-                  {">>"}
-                </button>
-                <span>
-                  Trang{" "}
-                  <strong>
-                    {pageIndex1 + 1} của {pageOptions1.length}
-                  </strong>{" "}
+
+                {/* Hiển thị trang hiện tại và tổng số trang */}
+                <span style={{ marginLeft: "10px" }}>
+                  Trang {pageIndex} / {totalPages}
                 </span>
-                <select
-                  value={pageSize1}
-                  onChange={(e) => setPageSize1(Number(e.target.value))}
+
+                {/* Tùy chọn giới hạn số trang */}
+                <Form.Control
+                  as="select"
+                  value={pageSize}
+                  onChange={handlePageSizeChange}
+                  style={{ width: "120px", display: "inline-block", marginLeft: "20px" }}
                 >
-                  {[10, 20, 30, 40, 50].map((pageSize) => (
-                    <option key={pageSize} value={pageSize}>
-                      Hiển thị {pageSize}
-                    </option>
-                  ))}
-                </select>
+                  <option value="5">5 mục</option>
+                  <option value="10">10 mục</option>
+                  <option value="20">20 mục</option>
+                  <option value="50">50 mục</option>
+                </Form.Control>
               </div>
+
+              {/* Đi đến trang */}
+              <Form inline className="mt-3">
+                <Form.Control
+                  type="number"
+                  value={inputPage}
+                  onChange={(e) => setInputPage(Number(e.target.value))}
+                  placeholder="Nhập trang"
+                  min="1"
+                  max={totalPages}
+                  style={{ width: "100px", marginRight: "10px" }}
+                />
+                <Button onClick={handlePageChange} style={{ backgroundColor: "black", color: "white", borderColor: "black" }}>
+                  Đi đến trang
+                </Button>
+              </Form>
             </Card.Body>
           </Card>
         </Col>

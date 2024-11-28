@@ -18,7 +18,8 @@
 import Dashboard from "views/Dashboard.js";
 import UserProfile from "views/UserProfile.js";
 import ActionHistory from "views/ActionHistory.js";
-import DataSensor from "views/DataSensor";
+import DataSensor from "views/DataSensor.js";
+import Bai5 from "views/Bai5.js";
 const dashboardRoutes = [
   
   {
@@ -48,7 +49,15 @@ const dashboardRoutes = [
     icon: "nc-icon nc-notes",
     component: DataSensor,
     layout: "/admin"
+  },
+  {
+    path: "/Bai5",
+    name: "Bai 5",
+    icon: "nc-icon nc-chart-pie-35",
+    component: Bai5,
+    layout: "/admin"
   }
+  
 ];
 
 export default dashboardRoutes;

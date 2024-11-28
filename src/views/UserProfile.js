@@ -63,7 +63,10 @@ function User() {
                     <Col className="pr-1" md="4">
                       <Form.Group>
                         <label>Git link</label>
-                        
+                        <p>
+                          <a >
+                          </a>
+                        </p>
                       </Form.Group>
                     </Col>
                   </Row>
@@ -72,7 +75,8 @@ function User() {
                     <Form.Group>
                       <label>API Docs</label>
                       <p>
-                        
+                        <a >
+                        </a>
                       </p>
                     </Form.Group>
                   </Col>
@@ -111,13 +115,20 @@ function User() {
               <div className="button-container mr-auto ml-auto">
                 <Button
                   className="btn-simple btn-icon"
-                  
+                  href="https://www.facebook.com/Duyisme.vn/?locale=vi_VN"
   
                   variant="link"
                 >
                   <i className="fab fa-facebook-square"></i>
                 </Button>
-                
+                <Button
+                  className="btn-simple btn-icon"
+                  href="https://github.com/Geralt-t"
+                  
+                  variant="link"
+                >
+                  <i className="fab fa-github"></i>
+                </Button>
                 <Button
                   className="btn-simple btn-icon"
                   href="https://open.spotify.com/user/31avkaevdacrygizyohtd7rwsjdy?si=18f1f50b41cc41d8"

@@ -23,7 +23,7 @@ function Dashboard() {
   const [led2RealTimeStatus, setLed2RealTimeStatus] = useState(false);
   const [led3RealTimeStatus, setLed3RealTimeStatus] = useState(false);
   // Sử dụng ws:// để kết nối MQTT
-  const client = mqtt.connect("ws://192.168.100.4:8080", {
+  const client = mqtt.connect("ws://172.20.10.3:8080", {
     username: 'duy',
     password: '1234',
   });
@@ -55,40 +55,47 @@ function Dashboard() {
     // Fetch dữ liệu mỗi 5 giây từ API
     const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:3001/data");
-        const data = await response.json();
-  
+        const response = await fetch("http://localhost:3001/data?page=1&limit=10&sortColumn=received_at&sortOrder=DESC");
+        const result = await response.json(); // Đổi tên biến để tránh nhầm lẫn
+        const data = result.data; // Truy cập thuộc tính data
+    
         const tempData = [];
         const humData = [];
         const lightData = [];
         const timeLabels = [];
-  
+    
+        // Chạy vòng lặp qua mảng data
         data.forEach(item => {
           const temp = parseFloat(item.nhietdo.replace(",", "."));
           const hum = parseFloat(item.doam.replace(",", "."));
           const light = parseFloat(item.anh_sang.replace(",", "."));
-          const time = new Date(item.received_at).toISOString().slice(11, 19); // Chỉ lấy phần giờ, phút, giây trong định dạng UTC
+          const time = item.received_at.slice(11, 19); // Chỉ lấy phần giờ, phút, giây trong định dạng UTC
     
-  
           tempData.push(temp);
           humData.push(hum);
           lightData.push(light);
           timeLabels.push(time);
         });
-  
+    
         // Lấy dữ liệu mới nhất cho các chỉ số
         setTemperatureData(tempData.slice(-10));
         setHumidityData(humData.slice(-10));
         setLightData(lightData.slice(-10));
         setLabels(timeLabels.slice(-10)); // Giữ lại 10 mốc thời gian gần nhất
-  
+    
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
-  
-    fetchData(); // Gọi ngay khi component mount
+    
+    // Gọi ngay khi component mount
+    fetchData(); 
+    // Thiết lập interval để fetch dữ liệu mỗi 2000ms
     const interval = setInterval(fetchData, 2000);
+    
+    // Nhớ dọn dẹp interval khi component unmount
+    return () => clearInterval(interval);
+    
   
     // Cleanup
     return () => {
